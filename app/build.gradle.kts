@@ -5,15 +5,28 @@ plugins {
   alias(libs.plugins.ksp)
 }
 
+val buildNumber = providers.gradleProperty("versionCode").map { it.toInt() }.getOrElse(1)
+val versionNameProp = providers.gradleProperty("versionName").getOrElse("1.0.$buildNumber")
+
 android {
   namespace = "ca.bralten.actshift"
   compileSdk = 36
+
+  signingConfigs {
+    getByName("debug") {
+      storeFile = file("debug.keystore")
+      storePassword = "android"
+      keyAlias = "androiddebugkey"
+      keyPassword = "android"
+    }
+  }
+
   defaultConfig {
     applicationId = "ca.bralten.actshift"
     minSdk = 26
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0.0"
+    versionCode = buildNumber
+    versionName = versionNameProp
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
@@ -21,6 +34,9 @@ android {
     release {
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+    }
+    debug {
+      signingConfig = signingConfigs.getByName("debug")
     }
   }
   compileOptions {
@@ -48,6 +64,11 @@ kotlin {
 ksp {
   arg("room.schemaLocation", "$projectDir/schemas")
   arg("room.incremental", "true")
+}
+
+// Prevent concurrent KSP variant tasks from racing on the shared Room schema JSON file
+tasks.matching { it.name == "kspReleaseKotlin" }.configureEach {
+  mustRunAfter(tasks.matching { it.name == "kspDebugKotlin" })
 }
 
 dependencies {

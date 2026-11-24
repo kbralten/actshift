@@ -15,3 +15,8 @@
 local.properties
 Behavioural Activation Worksheet.pdf
 product_requirements_document_behavioural_activation_app.md
+
+# Keystores & signing keys
+*.jks
+*.keystore
+!app/debug.keystore

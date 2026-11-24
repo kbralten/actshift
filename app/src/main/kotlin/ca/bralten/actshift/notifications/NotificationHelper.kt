@@ -1,6 +1,7 @@
 package ca.bralten.actshift.notifications
 
 import android.Manifest
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -111,7 +112,7 @@ class NotificationHelper(private val context: Context) {
         .addAction(0, "Move to Tomorrow", tomorrowIntent)
         .build()
 
-    NotificationManagerCompat.from(context).notify(startNotificationId(activity.id), notification)
+    notifyIfPermitted(startNotificationId(activity.id), notification)
   }
 
   fun showActiveTimerNotification(
@@ -164,7 +165,7 @@ class NotificationHelper(private val context: Context) {
         .addAction(0, "I'm Done", doneIntent)
         .build()
 
-    NotificationManagerCompat.from(context).notify(notificationId, notification)
+    notifyIfPermitted(notificationId, notification)
   }
 
   fun showPausedTimerNotification(
@@ -203,7 +204,7 @@ class NotificationHelper(private val context: Context) {
         .addAction(0, "I'm Done", doneIntent)
         .build()
 
-    NotificationManagerCompat.from(context).notify(notificationId, notification)
+    notifyIfPermitted(notificationId, notification)
   }
 
   fun showCompletionNotification(activity: ScheduledActivityEntity) {
@@ -226,7 +227,22 @@ class NotificationHelper(private val context: Context) {
         )
         .build()
 
-    NotificationManagerCompat.from(context).notify(completionNotificationId(activity.id), notification)
+    notifyIfPermitted(completionNotificationId(activity.id), notification)
+  }
+
+  private fun notifyIfPermitted(notificationId: Int, notification: Notification) {
+    if (
+      Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+          PackageManager.PERMISSION_GRANTED
+    ) {
+      return
+    }
+    try {
+      NotificationManagerCompat.from(context).notify(notificationId, notification)
+    } catch (_: SecurityException) {
+      // Notification permission was revoked between check and notify.
+    }
   }
 
   fun cancelActiveTimerNotification(activityId: Long) {
