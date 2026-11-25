@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 data class RevealUiState(
   val item: ActivityWithLog? = null,
@@ -17,8 +18,8 @@ data class RevealUiState(
 )
 
 class RevealViewModel(
-  activityId: Long,
-  repository: ActivationRepository,
+  private val activityId: Long,
+  private val repository: ActivationRepository,
 ) : ViewModel() {
 
   val uiState: StateFlow<RevealUiState> =
@@ -35,6 +36,12 @@ class RevealViewModel(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = RevealUiState(),
       )
+
+  fun saveReflectionNote(note: String) {
+    viewModelScope.launch {
+      repository.updateReflectionNote(activityId, note)
+    }
+  }
 
   companion object {
     fun factory(

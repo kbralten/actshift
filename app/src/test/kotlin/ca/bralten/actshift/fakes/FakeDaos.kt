@@ -209,6 +209,19 @@ class FakeActivationLogDao(
     }
   }
 
+  override suspend fun updateReflectionNote(
+    activityId: Long,
+    reflectionNote: String?,
+  ) {
+    logs.value = logs.value.map {
+      if (it.activityId == activityId) {
+        it.copy(reflectionNote = reflectionNote)
+      } else {
+        it
+      }
+    }
+  }
+
   override fun observeActivityWithLog(activityId: Long): Flow<ActivityWithLogEntity?> =
     combine(scheduledDao.items, logs) { activities, allLogs ->
       val activity = activities.firstOrNull { it.id == activityId } ?: return@combine null

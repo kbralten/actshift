@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -36,6 +37,8 @@ import ca.bralten.actshift.ui.editor.ActivityEditorScreen
 import ca.bralten.actshift.ui.editor.ActivityEditorViewModel
 import ca.bralten.actshift.ui.history.HistoryScreen
 import ca.bralten.actshift.ui.history.HistoryViewModel
+import ca.bralten.actshift.ui.insights.InsightsScreen
+import ca.bralten.actshift.ui.insights.InsightsViewModel
 import ca.bralten.actshift.ui.onboarding.OnboardingScreen
 import ca.bralten.actshift.ui.onboarding.OnboardingViewModel
 import ca.bralten.actshift.ui.settings.SettingsScreen
@@ -61,6 +64,7 @@ fun ActShiftNavHost(
 
   val showBottomBar =
     currentDestination?.hasRoute<TodayRoute>() == true ||
+      currentDestination?.hasRoute<InsightsRoute>() == true ||
       currentDestination?.hasRoute<HistoryRoute>() == true ||
       currentDestination?.hasRoute<SettingsRoute>() == true
 
@@ -90,6 +94,18 @@ fun ActShiftNavHost(
             },
             icon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
             label = { Text("Today") },
+          )
+          NavigationBarItem(
+            selected = currentDestination.hasRoute<InsightsRoute>(),
+            onClick = {
+              navController.navigate(InsightsRoute) {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+              }
+            },
+            icon = { Icon(Icons.Default.Insights, contentDescription = null) },
+            label = { Text("Insights") },
           )
           NavigationBarItem(
             selected = currentDestination.hasRoute<HistoryRoute>(),
@@ -160,10 +176,39 @@ fun ActShiftNavHost(
         )
       }
 
+      composable<InsightsRoute> {
+        val vm: InsightsViewModel =
+          viewModel(
+            factory = InsightsViewModel.factory(
+              repository = container.activationRepository,
+              preferencesRepository = container.preferencesRepository,
+            ),
+          )
+        InsightsScreen(
+          viewModel = vm,
+          exportManager = container.therapistExportManager,
+          onOpenSettings = {
+            navController.navigate(SettingsRoute) {
+              popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+              launchSingleTop = true
+              restoreState = true
+            }
+          },
+        )
+      }
+
       composable<HistoryRoute> {
         val vm: HistoryViewModel =
-          viewModel(factory = HistoryViewModel.factory(container.activationRepository))
-        HistoryScreen(viewModel = vm)
+          viewModel(
+            factory = HistoryViewModel.factory(
+              repository = container.activationRepository,
+              preferencesRepository = container.preferencesRepository,
+            ),
+          )
+        HistoryScreen(
+          viewModel = vm,
+          exportManager = container.therapistExportManager,
+        )
       }
 
       composable<SettingsRoute> {

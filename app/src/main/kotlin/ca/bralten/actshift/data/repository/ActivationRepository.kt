@@ -318,6 +318,11 @@ class ActivationRepository(
     notificationHelper.cancelNotificationsForActivity(activityId)
   }
 
+  suspend fun updateReflectionNote(activityId: Long, reflectionNote: String?) {
+    val cleanNote = reflectionNote?.trim()?.takeIf { it.isNotEmpty() }
+    activationLogDao.updateReflectionNote(activityId = activityId, reflectionNote = cleanNote)
+  }
+
   suspend fun discardAbandonedActivity(activityId: Long) {
     alarmScheduler.cancelAlarmsForActivity(activityId)
     notificationHelper.cancelNotificationsForActivity(activityId)

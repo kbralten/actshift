@@ -38,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -194,6 +195,33 @@ fun SettingsScreen(
           ) {
             Text("Allow Exact Reminder Timing")
           }
+        }
+      }
+
+      SettingsCard(title = "Insights & Statistics") {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Column(modifier = Modifier.weight(1f)) {
+            Text("Count 'Both' in Fun & Achievement", style = MaterialTheme.typography.bodyLarge)
+            Text(
+              text =
+                if (uiState.preferences.countBothInFunAndAchievement) {
+                  "Both / Mixed activities count in Fun, Achievement, and Both averages (treated as a combination of both)."
+                } else {
+                  "Both / Mixed activities count only in the Both average (treated as a separate category)."
+                },
+              style = MaterialTheme.typography.bodyMedium,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
+          Switch(
+            checked = uiState.preferences.countBothInFunAndAchievement,
+            onCheckedChange = viewModel::setCountBothInFunAndAchievement,
+            modifier = Modifier.testTag("both_category_toggle"),
+          )
         }
       }
 

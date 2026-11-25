@@ -21,6 +21,7 @@ data class UserPreferences(
   val calendarSyncEnabled: Boolean = false,
   val themeMode: ThemeMode = ThemeMode.SYSTEM,
   val useDynamicColor: Boolean = false,
+  val countBothInFunAndAchievement: Boolean = true,
 )
 
 class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
@@ -32,6 +33,7 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
     val CALENDAR_SYNC_ENABLED = booleanPreferencesKey("calendar_sync_enabled")
     val THEME_MODE = stringPreferencesKey("theme_mode")
     val USE_DYNAMIC_COLOR = booleanPreferencesKey("use_dynamic_color")
+    val COUNT_BOTH_IN_FUN_AND_ACHIEVEMENT = booleanPreferencesKey("count_both_in_fun_and_achievement")
   }
 
   val preferences: Flow<UserPreferences> =
@@ -44,6 +46,7 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
           ThemeMode.entries.firstOrNull { it.name == raw }
         } ?: ThemeMode.SYSTEM,
         useDynamicColor = prefs[Keys.USE_DYNAMIC_COLOR] ?: false,
+        countBothInFunAndAchievement = prefs[Keys.COUNT_BOTH_IN_FUN_AND_ACHIEVEMENT] ?: true,
       )
     }
 
@@ -74,5 +77,9 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
 
   suspend fun setUseDynamicColor(enabled: Boolean) {
     dataStore.edit { it[Keys.USE_DYNAMIC_COLOR] = enabled }
+  }
+
+  suspend fun setCountBothInFunAndAchievement(enabled: Boolean) {
+    dataStore.edit { it[Keys.COUNT_BOTH_IN_FUN_AND_ACHIEVEMENT] = enabled }
   }
 }

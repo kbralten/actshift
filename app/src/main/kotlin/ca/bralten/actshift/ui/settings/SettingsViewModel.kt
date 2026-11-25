@@ -96,6 +96,10 @@ class SettingsViewModel(
     viewModelScope.launch { preferencesRepository.setUseDynamicColor(enabled) }
   }
 
+  fun setCountBothInFunAndAchievement(enabled: Boolean) {
+    viewModelScope.launch { preferencesRepository.setCountBothInFunAndAchievement(enabled) }
+  }
+
   fun clearSyncMessage() {
     syncMessage.value = null
   }

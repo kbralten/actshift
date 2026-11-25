@@ -111,8 +111,9 @@ fun PostCheckInScreen(
         value = uiState.reflectionNote,
         onValueChange = viewModel::updateReflectionNote,
         label = { Text("What did you notice about yourself?") },
-        placeholder = { Text("Optional one-line note") },
-        singleLine = true,
+        placeholder = { Text("Optional — e.g., harder to start than to keep going") },
+        minLines = 2,
+        maxLines = 4,
         modifier = Modifier
           .fillMaxWidth()
           .testTag("reflection_input"),

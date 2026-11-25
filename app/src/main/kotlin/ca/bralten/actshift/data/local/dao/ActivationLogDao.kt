@@ -37,6 +37,18 @@ interface ActivationLogDao {
     reflectionNote: String?,
   )
 
+  @Query(
+    """
+    UPDATE activation_logs
+    SET reflectionNote = :reflectionNote
+    WHERE activityId = :activityId
+    """,
+  )
+  suspend fun updateReflectionNote(
+    activityId: Long,
+    reflectionNote: String?,
+  )
+
   @Transaction
   @Query("SELECT * FROM scheduled_activities WHERE id = :activityId LIMIT 1")
   fun observeActivityWithLog(activityId: Long): Flow<ActivityWithLogEntity?>
