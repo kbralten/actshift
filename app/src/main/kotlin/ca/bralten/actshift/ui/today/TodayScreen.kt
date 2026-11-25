@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -31,6 +32,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -41,17 +44,21 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ca.bralten.actshift.domain.AbandonedActivityPolicy
 import ca.bralten.actshift.domain.ActivitySuggestion
 import ca.bralten.actshift.domain.model.ScheduledActivity
 import ca.bralten.actshift.ui.components.CategoryBadge
 import ca.bralten.actshift.ui.components.QuickPickLibrarySheet
 import ca.bralten.actshift.ui.components.TimeFormatters
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +76,9 @@ fun TodayScreen(
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   var showQuickPickSheet by remember { mutableStateOf(false) }
+  var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
+  val snackbarHostState = remember { SnackbarHostState() }
+  val scope = rememberCoroutineScope()
 
   LaunchedEffect(openQuickPickOnLaunch) {
     if (openQuickPickOnLaunch) {
@@ -77,8 +87,15 @@ fun TodayScreen(
     }
   }
 
-  LaunchedEffect(Unit) { viewModel.refreshAndSync() }
+  LaunchedEffect(Unit) {
+    viewModel.refreshAndSync()
+    while (true) {
+      delay(60_000L)
+      nowMs = System.currentTimeMillis()
+    }
+  }
   LifecycleResumeEffect(Unit) {
+    nowMs = System.currentTimeMillis()
     viewModel.refreshAndSync()
     onPauseOrDispose {}
   }
@@ -94,6 +111,18 @@ fun TodayScreen(
         showQuickPickSheet = false
         viewModel.startQuickPickNow(suggestion, onStartPreCheckIn)
       },
+      onScheduleNextSlot = { suggestion ->
+        showQuickPickSheet = false
+        viewModel.scheduleQuickPickNextSlot(suggestion) { startMs ->
+          scope.launch {
+            snackbarHostState.showSnackbar(
+              "Scheduled \"${suggestion.title}\" for ${TimeFormatters.formatActivityStart(startMs)}",
+            )
+          }
+        }
+      },
+      suggestions = uiState.quickIdeas,
+      granularity = uiState.scheduleTimeGranularity,
     )
   }
 
@@ -121,6 +150,7 @@ fun TodayScreen(
 
   Scaffold(
     modifier = modifier,
+    snackbarHost = { SnackbarHost(snackbarHostState) },
     topBar = {
       TopAppBar(
         title = { Text("ActShift") },
@@ -175,13 +205,21 @@ fun TodayScreen(
           )
         }
         item {
+          val next = uiState.nextActivity!!
           NextActivityHeroCard(
-            activity = uiState.nextActivity!!,
-            onStart = { onStartPreCheckIn(uiState.nextActivity!!.id) },
-            onSnooze30m = { viewModel.snooze30Minutes(uiState.nextActivity!!.id) },
-            onMoveTomorrow = { viewModel.moveToTomorrow(uiState.nextActivity!!.id) },
-            onEdit = { onEditActivity(uiState.nextActivity!!.id) },
-            onDelete = { viewModel.deleteActivity(uiState.nextActivity!!.id) },
+            activity = next,
+            canArchiveToUncompleted = AbandonedActivityPolicy.isPastScheduledEnd(next, nowMs),
+            onStart = { onStartPreCheckIn(next.id) },
+            onMoveToUncompleted = {
+              viewModel.moveToUncompleted(next.id)
+              scope.launch {
+                snackbarHostState.showSnackbar("Moved \"${next.title}\" to Uncompleted")
+              }
+            },
+            onSnooze30m = { viewModel.snooze30Minutes(next.id) },
+            onMoveTomorrow = { viewModel.moveToTomorrow(next.id) },
+            onEdit = { onEditActivity(next.id) },
+            onDelete = { viewModel.deleteActivity(next.id) },
           )
         }
       } else if (uiState.inProgressActivities.isEmpty()) {
@@ -204,7 +242,14 @@ fun TodayScreen(
         items(uiState.todayRemaining, key = { "today_${it.id}" }) { activity ->
           ScheduledActivityRow(
             activity = activity,
+            canArchiveToUncompleted = AbandonedActivityPolicy.isPastScheduledEnd(activity, nowMs),
             onStart = { onStartPreCheckIn(activity.id) },
+            onMoveToUncompleted = {
+              viewModel.moveToUncompleted(activity.id)
+              scope.launch {
+                snackbarHostState.showSnackbar("Moved \"${activity.title}\" to Uncompleted")
+              }
+            },
             onSnooze30m = { viewModel.snooze30Minutes(activity.id) },
             onMoveTomorrow = { viewModel.moveToTomorrow(activity.id) },
             onEdit = { onEditActivity(activity.id) },
@@ -224,7 +269,14 @@ fun TodayScreen(
         items(uiState.upcomingLater, key = { "upcoming_${it.id}" }) { activity ->
           ScheduledActivityRow(
             activity = activity,
+            canArchiveToUncompleted = AbandonedActivityPolicy.isPastScheduledEnd(activity, nowMs),
             onStart = { onStartPreCheckIn(activity.id) },
+            onMoveToUncompleted = {
+              viewModel.moveToUncompleted(activity.id)
+              scope.launch {
+                snackbarHostState.showSnackbar("Moved \"${activity.title}\" to Uncompleted")
+              }
+            },
             onSnooze30m = { viewModel.snooze30Minutes(activity.id) },
             onMoveTomorrow = { viewModel.moveToTomorrow(activity.id) },
             onEdit = { onEditActivity(activity.id) },
@@ -299,7 +351,9 @@ private fun InProgressCard(
 @Composable
 private fun NextActivityHeroCard(
   activity: ScheduledActivity,
+  canArchiveToUncompleted: Boolean,
   onStart: () -> Unit,
+  onMoveToUncompleted: () -> Unit,
   onSnooze30m: () -> Unit,
   onMoveTomorrow: () -> Unit,
   onEdit: () -> Unit,
@@ -339,18 +393,30 @@ private fun NextActivityHeroCard(
           CategoryBadge(category = activity.category)
         }
 
-        Box {
-          IconButton(onClick = { menuExpanded = true }) {
-            Icon(Icons.Default.MoreVert, contentDescription = "More actions")
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          if (canArchiveToUncompleted) {
+            IconButton(onClick = onMoveToUncompleted) {
+              Icon(
+                imageVector = Icons.Outlined.Archive,
+                contentDescription = "Move to Uncompleted",
+              )
+            }
           }
-          ActivityOverflowMenu(
-            expanded = menuExpanded,
-            onDismiss = { menuExpanded = false },
-            onSnooze30m = onSnooze30m,
-            onMoveTomorrow = onMoveTomorrow,
-            onEdit = onEdit,
-            onDelete = onDelete,
-          )
+          Box {
+            IconButton(onClick = { menuExpanded = true }) {
+              Icon(Icons.Default.MoreVert, contentDescription = "More actions")
+            }
+            ActivityOverflowMenu(
+              expanded = menuExpanded,
+              canMoveToUncompleted = canArchiveToUncompleted,
+              onDismiss = { menuExpanded = false },
+              onMoveToUncompleted = onMoveToUncompleted,
+              onSnooze30m = onSnooze30m,
+              onMoveTomorrow = onMoveTomorrow,
+              onEdit = onEdit,
+              onDelete = onDelete,
+            )
+          }
         }
       }
 
@@ -367,7 +433,9 @@ private fun NextActivityHeroCard(
 @Composable
 private fun ScheduledActivityRow(
   activity: ScheduledActivity,
+  canArchiveToUncompleted: Boolean,
   onStart: () -> Unit,
+  onMoveToUncompleted: () -> Unit,
   onSnooze30m: () -> Unit,
   onMoveTomorrow: () -> Unit,
   onEdit: () -> Unit,
@@ -409,18 +477,30 @@ private fun ScheduledActivityRow(
         }
       }
 
-      Box {
-        IconButton(onClick = { menuExpanded = true }) {
-          Icon(Icons.Default.MoreVert, contentDescription = "Activity options")
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        if (canArchiveToUncompleted) {
+          IconButton(onClick = onMoveToUncompleted) {
+            Icon(
+              imageVector = Icons.Outlined.Archive,
+              contentDescription = "Move to Uncompleted",
+            )
+          }
         }
-        ActivityOverflowMenu(
-          expanded = menuExpanded,
-          onDismiss = { menuExpanded = false },
-          onSnooze30m = onSnooze30m,
-          onMoveTomorrow = onMoveTomorrow,
-          onEdit = onEdit,
-          onDelete = onDelete,
-        )
+        Box {
+          IconButton(onClick = { menuExpanded = true }) {
+            Icon(Icons.Default.MoreVert, contentDescription = "Activity options")
+          }
+          ActivityOverflowMenu(
+            expanded = menuExpanded,
+            canMoveToUncompleted = canArchiveToUncompleted,
+            onDismiss = { menuExpanded = false },
+            onMoveToUncompleted = onMoveToUncompleted,
+            onSnooze30m = onSnooze30m,
+            onMoveTomorrow = onMoveTomorrow,
+            onEdit = onEdit,
+            onDelete = onDelete,
+          )
+        }
       }
     }
   }
@@ -429,13 +509,24 @@ private fun ScheduledActivityRow(
 @Composable
 private fun ActivityOverflowMenu(
   expanded: Boolean,
+  canMoveToUncompleted: Boolean,
   onDismiss: () -> Unit,
+  onMoveToUncompleted: () -> Unit,
   onSnooze30m: () -> Unit,
   onMoveTomorrow: () -> Unit,
   onEdit: () -> Unit,
   onDelete: () -> Unit,
 ) {
   DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+    if (canMoveToUncompleted) {
+      DropdownMenuItem(
+        text = { Text("Move to Uncompleted") },
+        onClick = {
+          onDismiss()
+          onMoveToUncompleted()
+        },
+      )
+    }
     DropdownMenuItem(
       text = { Text("Snooze 30m") },
       onClick = {

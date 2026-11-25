@@ -9,12 +9,16 @@ import ca.bralten.actshift.domain.model.ScheduledActivity
  */
 object AbandonedActivityPolicy {
   const val ABANDONED_THRESHOLD_MS: Long = 12L * 60 * 60 * 1000
-  const val UNCOMPLETED_GRACE_MS: Long = 2L * 60 * 60 * 1000
+  const val UNCOMPLETED_GRACE_MS: Long = 8L * 60 * 60 * 1000
 
   fun abandonedCutoffEpochMs(nowMs: Long): Long = nowMs - ABANDONED_THRESHOLD_MS
 
   fun isAbandonedLog(log: ActivationLog, nowMs: Long): Boolean =
     !log.isComplete && (nowMs - log.preLoggedAtEpochMs) >= ABANDONED_THRESHOLD_MS
+
+  fun isPastScheduledEnd(activity: ScheduledActivity, nowMs: Long): Boolean =
+    activity.status == ActivityStatus.SCHEDULED &&
+      nowMs >= activity.scheduledEndEpochMs
 
   fun isExpiredScheduled(activity: ScheduledActivity, nowMs: Long): Boolean =
     activity.status == ActivityStatus.SCHEDULED &&

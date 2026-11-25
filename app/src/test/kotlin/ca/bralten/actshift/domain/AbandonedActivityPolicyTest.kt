@@ -26,7 +26,7 @@ class AbandonedActivityPolicyTest {
   }
 
   @Test
-  fun identifiesExpiredScheduledActivityTwoHoursPastEnd() {
+  fun identifiesExpiredScheduledActivityEightHoursPastEndAndPastScheduledEnd() {
     val start = 10_000_000L
     val durationMin = 10 // end = start + 600_000
     val activity = ScheduledActivity(
@@ -45,15 +45,23 @@ class AbandonedActivityPolicyTest {
       snoozeCount = 0,
     )
 
-    val oneHourAfterEnd = activity.scheduledEndEpochMs + 60L * 60 * 1000
-    val twoHoursAfterEnd = activity.scheduledEndEpochMs + 2L * 60 * 60 * 1000
+    val beforeEnd = activity.scheduledEndEpochMs - 1L
+    val atEnd = activity.scheduledEndEpochMs
+    val sevenHoursAfterEnd = activity.scheduledEndEpochMs + 7L * 60 * 60 * 1000
+    val eightHoursAfterEnd = activity.scheduledEndEpochMs + 8L * 60 * 60 * 1000
 
-    assertFalse(AbandonedActivityPolicy.isExpiredScheduled(activity, oneHourAfterEnd))
-    assertTrue(AbandonedActivityPolicy.isExpiredScheduled(activity, twoHoursAfterEnd))
+    assertFalse(AbandonedActivityPolicy.isPastScheduledEnd(activity, beforeEnd))
+    assertTrue(AbandonedActivityPolicy.isPastScheduledEnd(activity, atEnd))
+    assertTrue(AbandonedActivityPolicy.isPastScheduledEnd(activity, sevenHoursAfterEnd))
+    assertFalse(AbandonedActivityPolicy.isPastScheduledEnd(activity.copy(status = ActivityStatus.IN_PROGRESS), atEnd))
+    assertFalse(AbandonedActivityPolicy.isPastScheduledEnd(activity.copy(status = ActivityStatus.COMPLETED), atEnd))
+
+    assertFalse(AbandonedActivityPolicy.isExpiredScheduled(activity, sevenHoursAfterEnd))
+    assertTrue(AbandonedActivityPolicy.isExpiredScheduled(activity, eightHoursAfterEnd))
     assertFalse(
       AbandonedActivityPolicy.isExpiredScheduled(
         activity.copy(status = ActivityStatus.IN_PROGRESS),
-        twoHoursAfterEnd,
+        eightHoursAfterEnd,
       ),
     )
   }

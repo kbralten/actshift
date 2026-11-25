@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -41,6 +42,8 @@ import ca.bralten.actshift.ui.editor.ActivityEditorScreen
 import ca.bralten.actshift.ui.editor.ActivityEditorViewModel
 import ca.bralten.actshift.ui.history.HistoryScreen
 import ca.bralten.actshift.ui.history.HistoryViewModel
+import ca.bralten.actshift.ui.ideas.QuickIdeasScreen
+import ca.bralten.actshift.ui.ideas.QuickIdeasViewModel
 import ca.bralten.actshift.ui.insights.InsightsScreen
 import ca.bralten.actshift.ui.insights.InsightsViewModel
 import ca.bralten.actshift.ui.onboarding.OnboardingScreen
@@ -69,6 +72,7 @@ fun ActShiftNavHost(
 
   val showBottomBar =
     currentDestination?.hasRoute<TodayRoute>() == true ||
+      currentDestination?.hasRoute<QuickIdeasRoute>() == true ||
       currentDestination?.hasRoute<InsightsRoute>() == true ||
       currentDestination?.hasRoute<HistoryRoute>() == true ||
       currentDestination?.hasRoute<SettingsRoute>() == true
@@ -108,6 +112,18 @@ fun ActShiftNavHost(
             },
             icon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
             label = { Text("Today") },
+          )
+          NavigationBarItem(
+            selected = currentDestination.hasRoute<QuickIdeasRoute>(),
+            onClick = {
+              navController.navigate(QuickIdeasRoute) {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+              }
+            },
+            icon = { Icon(Icons.Default.Lightbulb, contentDescription = null) },
+            label = { Text("Ideas") },
           )
           NavigationBarItem(
             selected = currentDestination.hasRoute<InsightsRoute>(),
@@ -179,7 +195,13 @@ fun ActShiftNavHost(
 
       composable<TodayRoute> {
         val vm: TodayViewModel =
-          viewModel(factory = TodayViewModel.factory(container.activationRepository))
+          viewModel(
+            factory = TodayViewModel.factory(
+              repository = container.activationRepository,
+              quickIdeaRepository = container.quickIdeaRepository,
+              preferencesRepository = container.preferencesRepository,
+            ),
+          )
         TodayScreen(
           viewModel = vm,
           onAddActivity = { navController.navigate(ActivityEditorRoute()) },
@@ -198,6 +220,30 @@ fun ActShiftNavHost(
           },
           openQuickPickOnLaunch = openQuickPickOnToday,
           onQuickPickLaunchConsumed = { openQuickPickOnToday = false },
+        )
+      }
+
+      composable<QuickIdeasRoute> {
+        val vm: QuickIdeasViewModel =
+          viewModel(
+            factory = QuickIdeasViewModel.factory(
+              quickIdeaRepository = container.quickIdeaRepository,
+              activationRepository = container.activationRepository,
+              preferencesRepository = container.preferencesRepository,
+            ),
+          )
+        QuickIdeasScreen(
+          viewModel = vm,
+          onStartPreCheckIn = { id -> navController.navigate(PreCheckInRoute(id)) },
+          onScheduleSuggestion = { suggestion ->
+            navController.navigate(
+              ActivityEditorRoute(
+                prefillTitle = suggestion.title,
+                prefillDurationMinutes = suggestion.durationMinutes,
+                prefillCategoryName = suggestion.category.name,
+              ),
+            )
+          },
         )
       }
 
@@ -264,6 +310,8 @@ fun ActShiftNavHost(
               prefillTitle = route.prefillTitle,
               prefillDurationMinutes = route.prefillDurationMinutes,
               prefillCategory = prefillCategory,
+              preferencesRepository = container.preferencesRepository,
+              quickIdeaRepository = container.quickIdeaRepository,
             ),
           )
         ActivityEditorScreen(

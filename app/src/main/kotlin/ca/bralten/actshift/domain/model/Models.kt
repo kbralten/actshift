@@ -136,6 +136,11 @@ enum class ThemeMode(val label: String) {
   DARK("Dark"),
 }
 
+enum class ScheduleTimeGranularity(val label: String) {
+  HOUR("1 Hour"),
+  HALF_HOUR("30 Min"),
+}
+
 data class DeltaSummary(
   val depressionDelta: Int,
   val pleasureDelta: Int,

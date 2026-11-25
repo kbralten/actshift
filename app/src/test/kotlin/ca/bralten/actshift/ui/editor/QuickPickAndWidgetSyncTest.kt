@@ -9,6 +9,7 @@ import ca.bralten.actshift.data.repository.ActivationRepository
 import ca.bralten.actshift.domain.ActivitySuggestion
 import ca.bralten.actshift.domain.EnergyLevel
 import ca.bralten.actshift.domain.model.ActivityCategory
+import ca.bralten.actshift.domain.model.ActivityStatus
 import ca.bralten.actshift.domain.model.RecurrenceType
 import ca.bralten.actshift.fakes.FakeActivationLogDao
 import ca.bralten.actshift.fakes.FakeActivityTemplateDao
@@ -69,7 +70,7 @@ class QuickPickAndWidgetSyncTest {
         title = "Walk the dog",
         durationMinutes = 15,
         category = ActivityCategory.BOTH,
-        energyLevel = EnergyLevel.MODERATE,
+        energyLevel = EnergyLevel.HIGH,
       ),
     )
 
@@ -116,6 +117,20 @@ class QuickPickAndWidgetSyncTest {
       nowMs = 120_000L,
     )
     assertEquals(4, updateCount)
+
+    val secondId =
+      harness.repository.createActivity(
+        title = "Walk",
+        category = ActivityCategory.BOTH,
+        durationMinutes = 10,
+        startEpochMs = 200_000L,
+        recurrenceType = RecurrenceType.ONCE,
+      )
+    assertEquals(5, updateCount)
+
+    harness.repository.markUncompleted(secondId)
+    assertEquals(6, updateCount)
+    assertEquals(ActivityStatus.UNCOMPLETED, harness.repository.getActivity(secondId)?.status)
   }
 
   private data class Harness(val repository: ActivationRepository)

@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ca.bralten.actshift.domain.model.ScheduleTimeGranularity
 import ca.bralten.actshift.domain.model.ThemeMode
 import ca.bralten.actshift.widget.NextActivationWidgetProvider
 
@@ -196,6 +197,32 @@ fun SettingsScreen(
           ) {
             Text("Allow Exact Reminder Timing")
           }
+        }
+      }
+
+      SettingsCard(title = "Scheduling") {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text("Quick-schedule granularity", style = MaterialTheme.typography.bodyLarge)
+          SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            ScheduleTimeGranularity.entries.forEachIndexed { index, granularity ->
+              SegmentedButton(
+                selected = uiState.preferences.scheduleTimeGranularity == granularity,
+                onClick = { viewModel.setScheduleTimeGranularity(granularity) },
+                shape = SegmentedButtonDefaults.itemShape(index, ScheduleTimeGranularity.entries.size),
+                label = { Text(granularity.label) },
+              )
+            }
+          }
+          Text(
+            text =
+              if (uiState.preferences.scheduleTimeGranularity == ScheduleTimeGranularity.HOUR) {
+                "Quick Ideas and Schedule shortcuts use 1-hour increments (Next Hour, In 1h)."
+              } else {
+                "Quick Ideas and Schedule shortcuts use 30-minute increments (Next 30m, In 30m)."
+              },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
         }
       }
 

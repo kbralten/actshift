@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import ca.bralten.actshift.domain.model.ScheduleTimeGranularity
 import ca.bralten.actshift.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -22,6 +23,8 @@ data class UserPreferences(
   val themeMode: ThemeMode = ThemeMode.SYSTEM,
   val useDynamicColor: Boolean = false,
   val countBothInFunAndAchievement: Boolean = true,
+  val scheduleTimeGranularity: ScheduleTimeGranularity = ScheduleTimeGranularity.HOUR,
+  val starterIdeasSeeded: Boolean = false,
 )
 
 class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
@@ -34,6 +37,8 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
     val THEME_MODE = stringPreferencesKey("theme_mode")
     val USE_DYNAMIC_COLOR = booleanPreferencesKey("use_dynamic_color")
     val COUNT_BOTH_IN_FUN_AND_ACHIEVEMENT = booleanPreferencesKey("count_both_in_fun_and_achievement")
+    val SCHEDULE_TIME_GRANULARITY = stringPreferencesKey("schedule_time_granularity")
+    val STARTER_IDEAS_SEEDED = booleanPreferencesKey("starter_ideas_seeded")
   }
 
   val preferences: Flow<UserPreferences> =
@@ -47,6 +52,10 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         } ?: ThemeMode.SYSTEM,
         useDynamicColor = prefs[Keys.USE_DYNAMIC_COLOR] ?: false,
         countBothInFunAndAchievement = prefs[Keys.COUNT_BOTH_IN_FUN_AND_ACHIEVEMENT] ?: true,
+        scheduleTimeGranularity = prefs[Keys.SCHEDULE_TIME_GRANULARITY]?.let { raw ->
+          ScheduleTimeGranularity.entries.firstOrNull { it.name == raw }
+        } ?: ScheduleTimeGranularity.HOUR,
+        starterIdeasSeeded = prefs[Keys.STARTER_IDEAS_SEEDED] ?: false,
       )
     }
 
@@ -81,5 +90,13 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
 
   suspend fun setCountBothInFunAndAchievement(enabled: Boolean) {
     dataStore.edit { it[Keys.COUNT_BOTH_IN_FUN_AND_ACHIEVEMENT] = enabled }
+  }
+
+  suspend fun setScheduleTimeGranularity(granularity: ScheduleTimeGranularity) {
+    dataStore.edit { it[Keys.SCHEDULE_TIME_GRANULARITY] = granularity.name }
+  }
+
+  suspend fun setStarterIdeasSeeded(seeded: Boolean) {
+    dataStore.edit { it[Keys.STARTER_IDEAS_SEEDED] = seeded }
   }
 }

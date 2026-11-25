@@ -11,7 +11,9 @@ import kotlin.random.Random
 class ActivitySuggestionLibraryTest {
 
   @Test
-  fun curatedBankCoversAllEnergyLevelsAndCategoriesWith5To15MinDurations() {
+  fun curatedBankCoversLowMedHighEnergyLevelsAndCategoriesWith5To15MinDurations() {
+    assertEquals(listOf("Low", "Med", "High"), EnergyLevel.entries.map { it.label })
+
     val all = ActivitySuggestionLibrary.allSuggestions
     assertEquals(27, all.size)
     assertEquals(all.size, all.map { it.id }.toSet().size)
@@ -31,24 +33,24 @@ class ActivitySuggestionLibraryTest {
 
   @Test
   fun filterReturnsExactSubset() {
-    val veryLowFun =
+    val lowFun =
       ActivitySuggestionLibrary.filter(
-        energyLevel = EnergyLevel.VERY_LOW,
+        energyLevel = EnergyLevel.LOW,
         category = ActivityCategory.PLEASURE,
       )
-    assertEquals(3, veryLowFun.size)
-    assertTrue(veryLowFun.all { it.energyLevel == EnergyLevel.VERY_LOW && it.category == ActivityCategory.PLEASURE })
+    assertEquals(3, lowFun.size)
+    assertTrue(lowFun.all { it.energyLevel == EnergyLevel.LOW && it.category == ActivityCategory.PLEASURE })
 
-    val allLow = ActivitySuggestionLibrary.filter(energyLevel = EnergyLevel.LOW)
-    assertEquals(9, allLow.size)
-    assertTrue(allLow.all { it.energyLevel == EnergyLevel.LOW })
+    val allMed = ActivitySuggestionLibrary.filter(energyLevel = EnergyLevel.MEDIUM)
+    assertEquals(9, allMed.size)
+    assertTrue(allMed.all { it.energyLevel == EnergyLevel.MEDIUM })
   }
 
   @Test
   fun pickRandomExcludesPreviousIdWhenMultipleCandidatesExist() {
     val random = Random(42)
     val first = ActivitySuggestionLibrary.pickRandom(
-      energyLevel = EnergyLevel.MODERATE,
+      energyLevel = EnergyLevel.HIGH,
       category = ActivityCategory.BOTH,
       random = random,
     )
@@ -57,7 +59,7 @@ class ActivitySuggestionLibraryTest {
     repeat(10) {
       val next =
         ActivitySuggestionLibrary.pickRandom(
-          energyLevel = EnergyLevel.MODERATE,
+          energyLevel = EnergyLevel.HIGH,
           category = ActivityCategory.BOTH,
           excludeId = first!!.id,
           random = random,
@@ -70,7 +72,7 @@ class ActivitySuggestionLibraryTest {
   @Test
   fun createRandomizedSessionShufflesAllIdeasAndVariesInitialFilters() {
     val sessions = (1..20).map { seed ->
-      ActivitySuggestionLibrary.createRandomizedSession(Random(seed))
+      ActivitySuggestionLibrary.createRandomizedSession(random = Random(seed))
     }
 
     for (session in sessions) {

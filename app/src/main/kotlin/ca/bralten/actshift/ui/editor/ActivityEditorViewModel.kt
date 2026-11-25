@@ -3,12 +3,16 @@ package ca.bralten.actshift.ui.editor
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import ca.bralten.actshift.data.prefs.UserPreferencesRepository
 import ca.bralten.actshift.data.repository.ActivationRepository
+import ca.bralten.actshift.data.repository.QuickIdeaRepository
 import ca.bralten.actshift.domain.ActivitySuggestion
+import ca.bralten.actshift.domain.ActivitySuggestionLibrary
 import ca.bralten.actshift.domain.QuickTimePreset
 import ca.bralten.actshift.domain.QuickTimePresets
 import ca.bralten.actshift.domain.model.ActivityCategory
 import ca.bralten.actshift.domain.model.RecurrenceType
+import ca.bralten.actshift.domain.model.ScheduleTimeGranularity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,6 +35,8 @@ data class ActivityEditorUiState(
   val scheduledDate: LocalDate = LocalDate.now(),
   val scheduledTime: LocalTime = LocalTime.now().plusMinutes(15).withSecond(0).withNano(0),
   val quickPresets: List<QuickTimePreset> = QuickTimePresets.buildQuickPresets(ZonedDateTime.now()),
+  val granularity: ScheduleTimeGranularity = ScheduleTimeGranularity.HOUR,
+  val quickIdeas: List<ActivitySuggestion> = ActivitySuggestionLibrary.allSuggestions,
   val recurrenceType: RecurrenceType = RecurrenceType.ONCE,
   val weeklyDays: Set<DayOfWeek> = setOf(LocalDate.now().dayOfWeek),
   val isSaving: Boolean = false,
@@ -53,6 +59,8 @@ class ActivityEditorViewModel(
   prefillTitle: String? = null,
   prefillDurationMinutes: Int? = null,
   prefillCategory: ActivityCategory? = null,
+  preferencesRepository: UserPreferencesRepository? = null,
+  quickIdeaRepository: QuickIdeaRepository? = null,
 ) : ViewModel() {
 
   private val _uiState =
@@ -75,6 +83,26 @@ class ActivityEditorViewModel(
   val uiState: StateFlow<ActivityEditorUiState> = _uiState.asStateFlow()
 
   init {
+    if (preferencesRepository != null) {
+      viewModelScope.launch {
+        preferencesRepository.preferences.collect { prefs ->
+          _uiState.update { state ->
+            state.copy(
+              granularity = prefs.scheduleTimeGranularity,
+              quickPresets = QuickTimePresets.buildQuickPresets(ZonedDateTime.now(), prefs.scheduleTimeGranularity),
+            )
+          }
+        }
+      }
+    }
+    if (quickIdeaRepository != null) {
+      viewModelScope.launch {
+        quickIdeaRepository.ensureSeeded()
+        quickIdeaRepository.observeIdeas().collect { ideas ->
+          _uiState.update { it.copy(quickIdeas = ideas) }
+        }
+      }
+    }
     if (activityId != null) {
       viewModelScope.launch {
         val existing = repository.getActivity(activityId) ?: return@launch
@@ -147,7 +175,7 @@ class ActivityEditorViewModel(
       it.copy(
         scheduledDate = preset.targetDateTime.toLocalDate(),
         scheduledTime = preset.targetDateTime.toLocalTime().withSecond(0).withNano(0),
-        quickPresets = QuickTimePresets.buildQuickPresets(ZonedDateTime.now()),
+        quickPresets = QuickTimePresets.buildQuickPresets(ZonedDateTime.now(), it.granularity),
       )
     }
   }
@@ -211,6 +239,8 @@ class ActivityEditorViewModel(
       prefillTitle: String? = null,
       prefillDurationMinutes: Int? = null,
       prefillCategory: ActivityCategory? = null,
+      preferencesRepository: UserPreferencesRepository? = null,
+      quickIdeaRepository: QuickIdeaRepository? = null,
     ): ViewModelProvider.Factory =
       object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
@@ -221,6 +251,8 @@ class ActivityEditorViewModel(
             prefillTitle = prefillTitle,
             prefillDurationMinutes = prefillDurationMinutes,
             prefillCategory = prefillCategory,
+            preferencesRepository = preferencesRepository,
+            quickIdeaRepository = quickIdeaRepository,
           ) as T
       }
   }

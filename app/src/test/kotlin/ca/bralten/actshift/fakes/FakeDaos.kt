@@ -2,11 +2,14 @@ package ca.bralten.actshift.fakes
 
 import ca.bralten.actshift.data.local.dao.ActivationLogDao
 import ca.bralten.actshift.data.local.dao.ActivityTemplateDao
+import ca.bralten.actshift.data.local.dao.QuickIdeaDao
 import ca.bralten.actshift.data.local.dao.ScheduledActivityDao
 import ca.bralten.actshift.data.local.entity.ActivationLogEntity
 import ca.bralten.actshift.data.local.entity.ActivityTemplateEntity
 import ca.bralten.actshift.data.local.entity.ActivityWithLogEntity
+import ca.bralten.actshift.data.local.entity.QuickIdeaEntity
 import ca.bralten.actshift.data.local.entity.ScheduledActivityEntity
+import ca.bralten.actshift.domain.EnergyLevel
 import ca.bralten.actshift.domain.model.ActivityCategory
 import ca.bralten.actshift.domain.model.ActivityStatus
 import kotlinx.coroutines.flow.Flow
@@ -264,4 +267,62 @@ class FakeActivationLogDao(
         }
         log?.let { ActivityWithLogEntity(activity, it) }
       }
+}
+
+class FakeQuickIdeaDao : QuickIdeaDao {
+  val items = MutableStateFlow<List<QuickIdeaEntity>>(emptyList())
+  private var nextId = 1L
+
+  override fun observeAll(): Flow<List<QuickIdeaEntity>> =
+    items.map { list ->
+      list.sortedWith(compareBy<QuickIdeaEntity> { it.isStarter }.thenByDescending { it.id })
+    }
+
+  override suspend fun countAll(): Int = items.value.size
+
+  override suspend fun getExistingStarterKeys(): List<String> =
+    items.value.mapNotNull { it.starterKey }
+
+  override suspend fun insert(idea: QuickIdeaEntity): Long {
+    val id = if (idea.id == 0L) nextId++ else idea.id
+    val saved = idea.copy(id = id)
+    items.value = items.value.filterNot { it.id == id } + saved
+    return id
+  }
+
+  override suspend fun insertAll(ideas: List<QuickIdeaEntity>) {
+    val current = items.value.toMutableList()
+    for (idea in ideas) {
+      val id = if (idea.id == 0L) nextId++ else idea.id
+      current.removeAll { it.id == id }
+      current.add(idea.copy(id = id))
+    }
+    items.value = current
+  }
+
+  override suspend fun update(
+    id: Long,
+    title: String,
+    durationMinutes: Int,
+    category: ActivityCategory,
+    energyLevel: EnergyLevel,
+  ) {
+    items.value =
+      items.value.map {
+        if (it.id == id) {
+          it.copy(
+            title = title,
+            durationMinutes = durationMinutes,
+            category = category,
+            energyLevel = energyLevel,
+          )
+        } else {
+          it
+        }
+      }
+  }
+
+  override suspend fun deleteById(id: Long) {
+    items.value = items.value.filterNot { it.id == id }
+  }
 }

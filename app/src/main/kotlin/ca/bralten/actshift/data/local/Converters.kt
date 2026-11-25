@@ -1,6 +1,7 @@
 package ca.bralten.actshift.data.local
 
 import androidx.room.TypeConverter
+import ca.bralten.actshift.domain.EnergyLevel
 import ca.bralten.actshift.domain.model.ActivityCategory
 import ca.bralten.actshift.domain.model.ActivityStatus
 
@@ -18,4 +19,15 @@ class Converters {
   @TypeConverter
   fun toActivityStatus(value: String): ActivityStatus =
     ActivityStatus.entries.firstOrNull { it.name == value } ?: ActivityStatus.SCHEDULED
+
+  @TypeConverter
+  fun fromEnergyLevel(level: EnergyLevel): String = level.name
+
+  @TypeConverter
+  fun toEnergyLevel(value: String): EnergyLevel =
+    when (value) {
+      "VERY_LOW" -> EnergyLevel.LOW
+      "MODERATE" -> EnergyLevel.HIGH
+      else -> EnergyLevel.entries.firstOrNull { it.name == value } ?: EnergyLevel.LOW
+    }
 }

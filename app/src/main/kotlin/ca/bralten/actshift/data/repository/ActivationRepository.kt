@@ -245,6 +245,13 @@ class ActivationRepository(
     widgetUpdater.requestUpdate()
   }
 
+  suspend fun markUncompleted(activityId: Long) {
+    alarmScheduler.cancelAlarmsForActivity(activityId)
+    notificationHelper.cancelNotificationsForActivity(activityId)
+    scheduledActivityDao.updateStatus(activityId, ActivityStatus.UNCOMPLETED)
+    widgetUpdater.requestUpdate()
+  }
+
   suspend fun recordPreCheckIn(
     activityId: Long,
     depression: Int,

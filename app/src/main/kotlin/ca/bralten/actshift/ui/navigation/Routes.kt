@@ -6,6 +6,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object TodayRoute
 
+@Serializable data object QuickIdeasRoute
+
 @Serializable data object InsightsRoute
 
 @Serializable data object HistoryRoute

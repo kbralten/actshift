@@ -7,6 +7,7 @@ import ca.bralten.actshift.data.export.TherapistExportManager
 import ca.bralten.actshift.data.local.ActShiftDatabase
 import ca.bralten.actshift.data.prefs.UserPreferencesRepository
 import ca.bralten.actshift.data.repository.ActivationRepository
+import ca.bralten.actshift.data.repository.QuickIdeaRepository
 import ca.bralten.actshift.notifications.AlarmScheduler
 import ca.bralten.actshift.notifications.NotificationHelper
 import ca.bralten.actshift.widget.NextActivationWidgetProvider
@@ -40,6 +41,13 @@ class AppContainer(context: Context) {
       alarmScheduler = alarmScheduler,
       notificationHelper = notificationHelper,
       widgetUpdater = WidgetUpdater { NextActivationWidgetProvider.requestUpdate(appContext) },
+    )
+  }
+
+  val quickIdeaRepository: QuickIdeaRepository by lazy {
+    QuickIdeaRepository(
+      quickIdeaDao = database.quickIdeaDao(),
+      preferencesRepository = preferencesRepository,
     )
   }
 }

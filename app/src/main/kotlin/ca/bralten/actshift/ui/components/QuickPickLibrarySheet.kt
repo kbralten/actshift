@@ -4,9 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +28,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,7 +40,9 @@ import androidx.compose.ui.unit.dp
 import ca.bralten.actshift.domain.ActivitySuggestion
 import ca.bralten.actshift.domain.ActivitySuggestionLibrary
 import ca.bralten.actshift.domain.EnergyLevel
+import ca.bralten.actshift.domain.QuickTimePresets
 import ca.bralten.actshift.domain.model.ActivityCategory
+import ca.bralten.actshift.domain.model.ScheduleTimeGranularity
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -45,11 +50,15 @@ fun QuickPickLibrarySheet(
   onDismiss: () -> Unit,
   onSelectSuggestion: (ActivitySuggestion) -> Unit,
   onStartNow: ((ActivitySuggestion) -> Unit)? = null,
+  onScheduleNextSlot: ((ActivitySuggestion) -> Unit)? = null,
+  suggestions: List<ActivitySuggestion> = ActivitySuggestionLibrary.allSuggestions,
+  granularity: ScheduleTimeGranularity = ScheduleTimeGranularity.HOUR,
 ) {
-  val session = remember { ActivitySuggestionLibrary.createRandomizedSession() }
-  var selectedEnergy by remember { mutableStateOf(session.initialEnergyLevel) }
-  var selectedCategory by remember { mutableStateOf(session.initialCategory) }
-  var highlightedSuggestion by remember { mutableStateOf<ActivitySuggestion?>(null) }
+  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val session = remember(suggestions) { ActivitySuggestionLibrary.createRandomizedSession(source = suggestions) }
+  var selectedEnergy by remember(session) { mutableStateOf(session.initialEnergyLevel) }
+  var selectedCategory by remember(session) { mutableStateOf(session.initialCategory) }
+  var highlightedSuggestion by remember(session) { mutableStateOf<ActivitySuggestion?>(null) }
 
   val filtered =
     remember(session, selectedEnergy, selectedCategory) {
@@ -60,13 +69,16 @@ fun QuickPickLibrarySheet(
       )
     }
 
-  ModalBottomSheet(onDismissRequest = onDismiss) {
+  ModalBottomSheet(
+    onDismissRequest = onDismiss,
+    sheetState = sheetState,
+  ) {
     Column(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 20.dp)
-        .padding(bottom = 24.dp),
-      verticalArrangement = Arrangement.spacedBy(12.dp),
+        .navigationBarsPadding()
+        .padding(horizontal = 20.dp),
+      verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
       Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
@@ -149,6 +161,7 @@ fun QuickPickLibrarySheet(
                 energyLevel = selectedEnergy,
                 category = selectedCategory,
                 excludeId = highlightedSuggestion?.id,
+                source = suggestions,
               )
           },
         ) {
@@ -161,40 +174,67 @@ fun QuickPickLibrarySheet(
         }
       }
 
-      highlightedSuggestion?.let { picked ->
-        SuggestionCard(
-          suggestion = picked,
-          highlighted = true,
-          onSelectSuggestion = onSelectSuggestion,
-          onStartNow = onStartNow,
-        )
-      }
-
       LazyColumn(
         modifier = Modifier
           .fillMaxWidth()
-          .heightIn(max = 320.dp),
+          .weight(1f, fill = false),
+        contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
       ) {
-        items(filtered, key = { it.id }) { suggestion ->
-          SuggestionCard(
-            suggestion = suggestion,
-            highlighted = false,
-            onSelectSuggestion = onSelectSuggestion,
-            onStartNow = onStartNow,
-          )
+        highlightedSuggestion?.let { picked ->
+          item(key = "highlighted_${picked.id}_${picked.dbId}") {
+            SuggestionCard(
+              suggestion = picked,
+              highlighted = true,
+              granularity = granularity,
+              onSelectSuggestion = onSelectSuggestion,
+              onStartNow = onStartNow,
+              onScheduleNextSlot = onScheduleNextSlot,
+            )
+          }
+        }
+
+        if (filtered.isEmpty()) {
+          item(key = "empty_ideas") {
+            Surface(
+              shape = RoundedCornerShape(16.dp),
+              color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+              modifier = Modifier.fillMaxWidth(),
+            ) {
+              Text(
+                text = "No ideas in this energy/category yet — you can add your own in the Ideas tab.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(16.dp),
+              )
+            }
+          }
+        } else {
+          items(filtered, key = { "${it.id}_${it.dbId}" }) { suggestion ->
+            SuggestionCard(
+              suggestion = suggestion,
+              highlighted = false,
+              granularity = granularity,
+              onSelectSuggestion = onSelectSuggestion,
+              onStartNow = onStartNow,
+              onScheduleNextSlot = onScheduleNextSlot,
+            )
+          }
         }
       }
     }
   }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SuggestionCard(
   suggestion: ActivitySuggestion,
   highlighted: Boolean,
+  granularity: ScheduleTimeGranularity,
   onSelectSuggestion: (ActivitySuggestion) -> Unit,
   onStartNow: ((ActivitySuggestion) -> Unit)?,
+  onScheduleNextSlot: ((ActivitySuggestion) -> Unit)?,
 ) {
   Surface(
     shape = RoundedCornerShape(16.dp),
@@ -244,23 +284,36 @@ private fun SuggestionCard(
           )
         }
         CategoryBadge(category = suggestion.category)
+        if (!suggestion.isStarter) {
+          Surface(
+            shape = RoundedCornerShape(999.dp),
+            color = MaterialTheme.colorScheme.secondaryContainer,
+          ) {
+            Text(
+              text = "Custom",
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onSecondaryContainer,
+              modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            )
+          }
+        }
       }
 
       if (onStartNow != null) {
-        Row(
+        FlowRow(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(8.dp),
+          verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-          Button(
-            onClick = { onStartNow(suggestion) },
-            modifier = Modifier.weight(1f),
-          ) {
+          Button(onClick = { onStartNow(suggestion) }) {
             Text("Start Now")
           }
-          OutlinedButton(
-            onClick = { onSelectSuggestion(suggestion) },
-            modifier = Modifier.weight(1f),
-          ) {
+          if (onScheduleNextSlot != null) {
+            FilledTonalButton(onClick = { onScheduleNextSlot(suggestion) }) {
+              Text(QuickTimePresets.nextSlotButtonLabel(granularity))
+            }
+          }
+          OutlinedButton(onClick = { onSelectSuggestion(suggestion) }) {
             Text("Schedule")
           }
         }

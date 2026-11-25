@@ -75,6 +75,8 @@ fun ActivityEditorScreen(
         viewModel.applySuggestion(suggestion)
         showQuickPick = false
       },
+      suggestions = uiState.quickIdeas,
+      granularity = uiState.granularity,
     )
   }
 

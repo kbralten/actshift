@@ -7,6 +7,7 @@ import ca.bralten.actshift.data.calendar.CalendarSyncEngine
 import ca.bralten.actshift.data.prefs.UserPreferences
 import ca.bralten.actshift.data.prefs.UserPreferencesRepository
 import ca.bralten.actshift.data.repository.ActivationRepository
+import ca.bralten.actshift.domain.model.ScheduleTimeGranularity
 import ca.bralten.actshift.domain.model.ThemeMode
 import ca.bralten.actshift.notifications.AlarmScheduler
 import ca.bralten.actshift.notifications.NotificationHelper
@@ -98,6 +99,10 @@ class SettingsViewModel(
 
   fun setCountBothInFunAndAchievement(enabled: Boolean) {
     viewModelScope.launch { preferencesRepository.setCountBothInFunAndAchievement(enabled) }
+  }
+
+  fun setScheduleTimeGranularity(granularity: ScheduleTimeGranularity) {
+    viewModelScope.launch { preferencesRepository.setScheduleTimeGranularity(granularity) }
   }
 
   fun clearSyncMessage() {
