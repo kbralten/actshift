@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -46,8 +47,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ca.bralten.actshift.domain.ActivitySuggestion
 import ca.bralten.actshift.domain.model.ScheduledActivity
 import ca.bralten.actshift.ui.components.CategoryBadge
+import ca.bralten.actshift.ui.components.QuickPickLibrarySheet
 import ca.bralten.actshift.ui.components.TimeFormatters
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,14 +62,39 @@ fun TodayScreen(
   onStartPreCheckIn: (Long) -> Unit,
   onOpenTimer: (Long) -> Unit,
   onOpenPostCheckIn: (Long) -> Unit,
+  onScheduleSuggestion: (ActivitySuggestion) -> Unit = {},
+  openQuickPickOnLaunch: Boolean = false,
+  onQuickPickLaunchConsumed: () -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+  var showQuickPickSheet by remember { mutableStateOf(false) }
+
+  LaunchedEffect(openQuickPickOnLaunch) {
+    if (openQuickPickOnLaunch) {
+      showQuickPickSheet = true
+      onQuickPickLaunchConsumed()
+    }
+  }
 
   LaunchedEffect(Unit) { viewModel.refreshAndSync() }
   LifecycleResumeEffect(Unit) {
     viewModel.refreshAndSync()
     onPauseOrDispose {}
+  }
+
+  if (showQuickPickSheet) {
+    QuickPickLibrarySheet(
+      onDismiss = { showQuickPickSheet = false },
+      onSelectSuggestion = { suggestion ->
+        showQuickPickSheet = false
+        onScheduleSuggestion(suggestion)
+      },
+      onStartNow = { suggestion ->
+        showQuickPickSheet = false
+        viewModel.startQuickPickNow(suggestion, onStartPreCheckIn)
+      },
+    )
   }
 
   uiState.abandonedPrompt?.let { abandoned ->
@@ -99,6 +127,11 @@ fun TodayScreen(
         colors = TopAppBarDefaults.topAppBarColors(
           containerColor = MaterialTheme.colorScheme.background,
         ),
+        actions = {
+          IconButton(onClick = { showQuickPickSheet = true }) {
+            Icon(Icons.Default.Lightbulb, contentDescription = "Quick-Pick Ideas")
+          }
+        },
       )
     },
     floatingActionButton = {
@@ -153,7 +186,10 @@ fun TodayScreen(
         }
       } else if (uiState.inProgressActivities.isEmpty()) {
         item {
-          EmptyTodayCard(onAddActivity = onAddActivity)
+          EmptyTodayCard(
+            onAddActivity = onAddActivity,
+            onBrowseIdeas = { showQuickPickSheet = true },
+          )
         }
       }
 
@@ -432,7 +468,10 @@ private fun ActivityOverflowMenu(
 }
 
 @Composable
-private fun EmptyTodayCard(onAddActivity: () -> Unit) {
+private fun EmptyTodayCard(
+  onAddActivity: () -> Unit,
+  onBrowseIdeas: () -> Unit,
+) {
   Surface(
     shape = RoundedCornerShape(20.dp),
     color = MaterialTheme.colorScheme.surface,
@@ -453,8 +492,13 @@ private fun EmptyTodayCard(onAddActivity: () -> Unit) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
       Spacer(modifier = Modifier.height(4.dp))
-      Button(onClick = onAddActivity) {
-        Text("Schedule a 10m Activity")
+      Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Button(onClick = onAddActivity) {
+          Text("Schedule a 10m Activity")
+        }
+        OutlinedButton(onClick = onBrowseIdeas) {
+          Text("Browse Ideas")
+        }
       }
     }
   }

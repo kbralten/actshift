@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ca.bralten.actshift.domain.model.ThemeMode
+import ca.bralten.actshift.widget.NextActivationWidgetProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -221,6 +222,29 @@ fun SettingsScreen(
             checked = uiState.preferences.countBothInFunAndAchievement,
             onCheckedChange = viewModel::setCountBothInFunAndAchievement,
             modifier = Modifier.testTag("both_category_toggle"),
+          )
+        }
+      }
+
+      SettingsCard(title = "Home Screen Widget") {
+        Text(
+          text = "Pin your next scheduled activation and one-tap check-in buttons to your home screen.",
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        val canPinWidget = remember(context) { NextActivationWidgetProvider.isPinWidgetSupported(context) }
+        if (canPinWidget) {
+          OutlinedButton(
+            onClick = { NextActivationWidgetProvider.requestPinWidget(context) },
+            modifier = Modifier.fillMaxWidth(),
+          ) {
+            Text("Add Widget to Home Screen")
+          }
+        } else {
+          Text(
+            text = "Long-press your home screen → Widgets → ActShift",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
         }
       }

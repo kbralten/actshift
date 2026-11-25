@@ -14,6 +14,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -24,6 +27,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import ca.bralten.actshift.di.AppContainer
+import ca.bralten.actshift.domain.model.ActivityCategory
 import ca.bralten.actshift.notifications.DeepLinkContract
 import ca.bralten.actshift.ui.checkin.ActiveTimerScreen
 import ca.bralten.actshift.ui.checkin.ActiveTimerViewModel
@@ -48,7 +52,7 @@ import ca.bralten.actshift.ui.today.TodayViewModel
 
 data class DeepLinkTarget(
   val destination: String,
-  val activityId: Long,
+  val activityId: Long = -1L,
 )
 
 @Composable
@@ -61,6 +65,7 @@ fun ActShiftNavHost(
   val navController = rememberNavController()
   val navBackStackEntry by navController.currentBackStackEntryAsState()
   val currentDestination = navBackStackEntry?.destination
+  var openQuickPickOnToday by remember { mutableStateOf(false) }
 
   val showBottomBar =
     currentDestination?.hasRoute<TodayRoute>() == true ||
@@ -75,6 +80,15 @@ fun ActShiftNavHost(
       DeepLinkContract.DEST_PRE_CHECKIN -> navController.navigate(PreCheckInRoute(target.activityId))
       DeepLinkContract.DEST_POST_CHECKIN -> navController.navigate(PostCheckInRoute(target.activityId))
       DeepLinkContract.DEST_ACTIVE_TIMER -> navController.navigate(ActiveTimerRoute(target.activityId))
+      DeepLinkContract.DEST_NEW_ACTIVITY -> navController.navigate(ActivityEditorRoute())
+      DeepLinkContract.DEST_QUICK_PICK -> {
+        openQuickPickOnToday = true
+        navController.navigate(TodayRoute) {
+          popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+          launchSingleTop = true
+          restoreState = true
+        }
+      }
     }
     onDeepLinkConsumed()
   }
@@ -168,11 +182,22 @@ fun ActShiftNavHost(
           viewModel(factory = TodayViewModel.factory(container.activationRepository))
         TodayScreen(
           viewModel = vm,
-          onAddActivity = { navController.navigate(ActivityEditorRoute(null)) },
-          onEditActivity = { id -> navController.navigate(ActivityEditorRoute(id)) },
+          onAddActivity = { navController.navigate(ActivityEditorRoute()) },
+          onEditActivity = { id -> navController.navigate(ActivityEditorRoute(activityId = id)) },
           onStartPreCheckIn = { id -> navController.navigate(PreCheckInRoute(id)) },
           onOpenTimer = { id -> navController.navigate(ActiveTimerRoute(id)) },
           onOpenPostCheckIn = { id -> navController.navigate(PostCheckInRoute(id)) },
+          onScheduleSuggestion = { suggestion ->
+            navController.navigate(
+              ActivityEditorRoute(
+                prefillTitle = suggestion.title,
+                prefillDurationMinutes = suggestion.durationMinutes,
+                prefillCategoryName = suggestion.category.name,
+              ),
+            )
+          },
+          openQuickPickOnLaunch = openQuickPickOnToday,
+          onQuickPickLaunchConsumed = { openQuickPickOnToday = false },
         )
       }
 
@@ -227,11 +252,18 @@ fun ActShiftNavHost(
 
       composable<ActivityEditorRoute> { backStackEntry ->
         val route = backStackEntry.toRoute<ActivityEditorRoute>()
+        val prefillCategory =
+          route.prefillCategoryName?.let { raw ->
+            ActivityCategory.entries.firstOrNull { it.name == raw }
+          }
         val vm: ActivityEditorViewModel =
           viewModel(
             factory = ActivityEditorViewModel.factory(
               activityId = route.activityId,
               repository = container.activationRepository,
+              prefillTitle = route.prefillTitle,
+              prefillDurationMinutes = route.prefillDurationMinutes,
+              prefillCategory = prefillCategory,
             ),
           )
         ActivityEditorScreen(

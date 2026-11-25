@@ -68,7 +68,11 @@ class MainActivity : ComponentActivity() {
   private fun handleIntent(intent: Intent?) {
     val destination = intent?.getStringExtra(DeepLinkContract.EXTRA_DESTINATION) ?: return
     val activityId = intent.getLongExtra(DeepLinkContract.EXTRA_ACTIVITY_ID, -1L)
-    if (activityId > 0L) {
+    val needsActivityId =
+      destination == DeepLinkContract.DEST_PRE_CHECKIN ||
+        destination == DeepLinkContract.DEST_POST_CHECKIN ||
+        destination == DeepLinkContract.DEST_ACTIVE_TIMER
+    if (!needsActivityId || activityId > 0L) {
       pendingDeepLink = DeepLinkTarget(destination = destination, activityId = activityId)
     }
   }

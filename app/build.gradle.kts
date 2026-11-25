@@ -6,7 +6,7 @@ plugins {
 }
 
 val buildNumber = providers.gradleProperty("versionCode").map { it.toInt() }.getOrElse(1)
-val versionNameProp = providers.gradleProperty("versionName").getOrElse("1.1.$buildNumber")
+val versionNameProp = providers.gradleProperty("versionName").getOrElse("1.2.$buildNumber")
 
 android {
   namespace = "ca.bralten.actshift"

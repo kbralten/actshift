@@ -9,6 +9,8 @@ import ca.bralten.actshift.data.prefs.UserPreferencesRepository
 import ca.bralten.actshift.data.repository.ActivationRepository
 import ca.bralten.actshift.notifications.AlarmScheduler
 import ca.bralten.actshift.notifications.NotificationHelper
+import ca.bralten.actshift.widget.NextActivationWidgetProvider
+import ca.bralten.actshift.widget.WidgetUpdater
 
 class AppContainer(context: Context) {
   private val appContext = context.applicationContext
@@ -37,6 +39,7 @@ class AppContainer(context: Context) {
       calendarSyncEngine = calendarSyncEngine,
       alarmScheduler = alarmScheduler,
       notificationHelper = notificationHelper,
+      widgetUpdater = WidgetUpdater { NextActivationWidgetProvider.requestUpdate(appContext) },
     )
   }
 }

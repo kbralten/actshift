@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
@@ -47,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ca.bralten.actshift.domain.model.ActivityCategory
 import ca.bralten.actshift.domain.model.RecurrenceType
+import ca.bralten.actshift.ui.components.QuickPickLibrarySheet
 import ca.bralten.actshift.ui.components.TimeFormatters
 import java.time.DayOfWeek
 import java.time.Instant
@@ -64,6 +66,17 @@ fun ActivityEditorScreen(
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   var showDatePicker by remember { mutableStateOf(false) }
   var showTimePicker by remember { mutableStateOf(false) }
+  var showQuickPick by remember { mutableStateOf(false) }
+
+  if (showQuickPick) {
+    QuickPickLibrarySheet(
+      onDismiss = { showQuickPick = false },
+      onSelectSuggestion = { suggestion ->
+        viewModel.applySuggestion(suggestion)
+        showQuickPick = false
+      },
+    )
+  }
 
   if (showDatePicker) {
     val initialMillis =
@@ -146,6 +159,20 @@ fun ActivityEditorScreen(
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
       )
+
+      if (!uiState.isEditing) {
+        OutlinedButton(
+          onClick = { showQuickPick = true },
+          modifier = Modifier.fillMaxWidth(),
+        ) {
+          Icon(
+            imageVector = Icons.Default.Lightbulb,
+            contentDescription = null,
+            modifier = Modifier.padding(end = 8.dp),
+          )
+          Text("Browse Quick-Pick Ideas")
+        }
+      }
 
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Duration", style = MaterialTheme.typography.titleMedium)

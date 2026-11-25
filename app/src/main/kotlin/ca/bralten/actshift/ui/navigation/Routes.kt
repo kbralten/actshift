@@ -12,7 +12,12 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object SettingsRoute
 
-@Serializable data class ActivityEditorRoute(val activityId: Long? = null)
+@Serializable data class ActivityEditorRoute(
+  val activityId: Long? = null,
+  val prefillTitle: String? = null,
+  val prefillDurationMinutes: Int? = null,
+  val prefillCategoryName: String? = null,
+)
 
 @Serializable data class PreCheckInRoute(val activityId: Long)
 

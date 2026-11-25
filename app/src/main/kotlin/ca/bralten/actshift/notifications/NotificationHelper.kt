@@ -23,6 +23,8 @@ object DeepLinkContract {
   const val DEST_PRE_CHECKIN = "pre_checkin"
   const val DEST_POST_CHECKIN = "post_checkin"
   const val DEST_ACTIVE_TIMER = "active_timer"
+  const val DEST_QUICK_PICK = "quick_pick"
+  const val DEST_NEW_ACTIVITY = "new_activity"
 }
 
 class NotificationHelper(private val context: Context) {

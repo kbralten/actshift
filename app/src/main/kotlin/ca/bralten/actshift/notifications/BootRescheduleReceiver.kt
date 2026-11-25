@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import ca.bralten.actshift.ActShiftApplication
+import ca.bralten.actshift.widget.NextActivationWidgetProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -27,6 +28,7 @@ class BootRescheduleReceiver : BroadcastReceiver() {
     CoroutineScope(Dispatchers.IO).launch {
       try {
         app.container.activationRepository.rescheduleAllAlarms()
+        NextActivationWidgetProvider.requestUpdate(context)
       } finally {
         pendingResult.finish()
       }

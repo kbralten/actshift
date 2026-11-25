@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import ca.bralten.actshift.data.repository.ActivationRepository
+import ca.bralten.actshift.domain.ActivitySuggestion
 import ca.bralten.actshift.domain.QuickTimePreset
 import ca.bralten.actshift.domain.QuickTimePresets
 import ca.bralten.actshift.domain.model.ActivityCategory
@@ -49,9 +50,28 @@ data class ActivityEditorUiState(
 class ActivityEditorViewModel(
   private val activityId: Long?,
   private val repository: ActivationRepository,
+  prefillTitle: String? = null,
+  prefillDurationMinutes: Int? = null,
+  prefillCategory: ActivityCategory? = null,
 ) : ViewModel() {
 
-  private val _uiState = MutableStateFlow(ActivityEditorUiState(isEditing = activityId != null))
+  private val _uiState =
+    MutableStateFlow(
+      if (activityId == null) {
+        val duration = prefillDurationMinutes?.coerceIn(1, 240) ?: 10
+        val isPreset = duration in listOf(5, 10, 15)
+        ActivityEditorUiState(
+          isEditing = false,
+          title = prefillTitle.orEmpty(),
+          durationMinutes = duration,
+          isCustomDuration = !isPreset,
+          customDurationText = duration.toString(),
+          category = prefillCategory ?: ActivityCategory.BOTH,
+        )
+      } else {
+        ActivityEditorUiState(isEditing = true)
+      },
+    )
   val uiState: StateFlow<ActivityEditorUiState> = _uiState.asStateFlow()
 
   init {
@@ -99,6 +119,19 @@ class ActivityEditorViewModel(
 
   fun selectCategory(category: ActivityCategory) {
     _uiState.update { it.copy(category = category) }
+  }
+
+  fun applySuggestion(suggestion: ActivitySuggestion) {
+    val isPreset = suggestion.durationMinutes in listOf(5, 10, 15)
+    _uiState.update {
+      it.copy(
+        title = suggestion.title,
+        durationMinutes = suggestion.durationMinutes,
+        isCustomDuration = !isPreset,
+        customDurationText = suggestion.durationMinutes.toString(),
+        category = suggestion.category,
+      )
+    }
   }
 
   fun updateDate(date: LocalDate) {
@@ -175,11 +208,20 @@ class ActivityEditorViewModel(
     fun factory(
       activityId: Long?,
       repository: ActivationRepository,
+      prefillTitle: String? = null,
+      prefillDurationMinutes: Int? = null,
+      prefillCategory: ActivityCategory? = null,
     ): ViewModelProvider.Factory =
       object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-          ActivityEditorViewModel(activityId, repository) as T
+          ActivityEditorViewModel(
+            activityId = activityId,
+            repository = repository,
+            prefillTitle = prefillTitle,
+            prefillDurationMinutes = prefillDurationMinutes,
+            prefillCategory = prefillCategory,
+          ) as T
       }
   }
 }

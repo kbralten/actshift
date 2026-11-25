@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import ca.bralten.actshift.data.repository.ActivationRepository
+import ca.bralten.actshift.domain.ActivitySuggestion
 import ca.bralten.actshift.domain.model.ActivityStatus
 import ca.bralten.actshift.domain.model.ActivityWithLog
+import ca.bralten.actshift.domain.model.RecurrenceType
 import ca.bralten.actshift.domain.model.ScheduledActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -106,6 +108,23 @@ class TodayViewModel(
 
   fun discardAbandoned(activityId: Long) {
     viewModelScope.launch { repository.discardAbandonedActivity(activityId) }
+  }
+
+  fun startQuickPickNow(
+    suggestion: ActivitySuggestion,
+    onCreated: (Long) -> Unit,
+  ) {
+    viewModelScope.launch {
+      val id =
+        repository.createActivity(
+          title = suggestion.title,
+          category = suggestion.category,
+          durationMinutes = suggestion.durationMinutes,
+          startEpochMs = System.currentTimeMillis(),
+          recurrenceType = RecurrenceType.ONCE,
+        )
+      onCreated(id)
+    }
   }
 
   companion object {

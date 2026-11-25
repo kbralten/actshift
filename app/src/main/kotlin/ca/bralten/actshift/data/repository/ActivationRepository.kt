@@ -16,6 +16,7 @@ import ca.bralten.actshift.domain.model.RecurrenceType
 import ca.bralten.actshift.domain.model.ScheduledActivity
 import ca.bralten.actshift.notifications.AlarmScheduler
 import ca.bralten.actshift.notifications.NotificationHelper
+import ca.bralten.actshift.widget.WidgetUpdater
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.DayOfWeek
@@ -34,6 +35,7 @@ class ActivationRepository(
   private val calendarSyncEngine: CalendarSyncEngine,
   private val alarmScheduler: AlarmScheduler,
   private val notificationHelper: NotificationHelper,
+  private val widgetUpdater: WidgetUpdater = WidgetUpdater.NoOp,
 ) {
 
   fun observeUpcomingAndActive(): Flow<List<ScheduledActivity>> =
@@ -89,6 +91,7 @@ class ActivationRepository(
         calendarSyncEngine.pushOneOffActivity(entity)
         alarmScheduler.scheduleStartAlarm(entity, nowMs)
       }
+      widgetUpdater.requestUpdate()
       return insertedId
     }
 
@@ -140,6 +143,7 @@ class ActivationRepository(
       if (firstId == -1L) firstId = id
       scheduledActivityDao.getById(id)?.let { alarmScheduler.scheduleStartAlarm(it, nowMs) }
     }
+    widgetUpdater.requestUpdate()
     return firstId
   }
 
@@ -166,6 +170,7 @@ class ActivationRepository(
         alarmScheduler.scheduleStartAlarm(updated)
       }
     }
+    widgetUpdater.requestUpdate()
   }
 
   suspend fun updateActivityCategory(activityId: Long, category: ActivityCategory) {
@@ -177,6 +182,7 @@ class ActivationRepository(
       scheduledStartEpochMs = existing.scheduledStartEpochMs,
       durationMinutes = existing.durationMinutes,
     )
+    widgetUpdater.requestUpdate()
   }
 
   suspend fun deleteActivity(activityId: Long) {
@@ -187,6 +193,7 @@ class ActivationRepository(
       calendarSyncEngine.deleteEventIfPresent(existing.calendarEventId)
     }
     scheduledActivityDao.deleteById(activityId)
+    widgetUpdater.requestUpdate()
   }
 
   suspend fun snooze30Minutes(activityId: Long, nowMs: Long = System.currentTimeMillis()) {
@@ -199,6 +206,7 @@ class ActivationRepository(
       calendarSyncEngine.updateActivityEvent(updated)
       alarmScheduler.scheduleStartAlarm(updated, nowMs)
     }
+    widgetUpdater.requestUpdate()
   }
 
   suspend fun moveToTomorrow(activityId: Long, nowMs: Long = System.currentTimeMillis()) {
@@ -217,6 +225,7 @@ class ActivationRepository(
       calendarSyncEngine.updateActivityEvent(updated)
       alarmScheduler.scheduleStartAlarm(updated, nowMs)
     }
+    widgetUpdater.requestUpdate()
   }
 
   suspend fun rescheduleActivity(activityId: Long, newStartEpochMs: Long) {
@@ -226,12 +235,14 @@ class ActivationRepository(
       calendarSyncEngine.updateActivityEvent(updated)
       alarmScheduler.scheduleStartAlarm(updated)
     }
+    widgetUpdater.requestUpdate()
   }
 
   suspend fun dismissUncompleted(activityId: Long) {
     alarmScheduler.cancelAlarmsForActivity(activityId)
     notificationHelper.cancelNotificationsForActivity(activityId)
     scheduledActivityDao.updateStatus(activityId, ActivityStatus.DISCARDED)
+    widgetUpdater.requestUpdate()
   }
 
   suspend fun recordPreCheckIn(
@@ -267,6 +278,7 @@ class ActivationRepository(
         nowMs + maxOf(activity.durationMinutes, 15) * 60_000L
       }
     alarmScheduler.scheduleCompletionAlarm(activityId, completionTriggerMs, nowMs)
+    widgetUpdater.requestUpdate()
   }
 
   suspend fun setTimerEnd(
@@ -285,6 +297,7 @@ class ActivationRepository(
     } else {
       notificationHelper.cancelActiveTimerNotification(activityId)
     }
+    widgetUpdater.requestUpdate()
   }
 
   suspend fun extendTimer(activityId: Long, extraMinutes: Int = 5, nowMs: Long = System.currentTimeMillis()) {
@@ -294,6 +307,7 @@ class ActivationRepository(
     scheduledActivityDao.updateTimerEnd(activityId, newEnd)
     notificationHelper.showActiveTimerNotification(existing, newEnd)
     alarmScheduler.scheduleCompletionAlarm(activityId, newEnd, nowMs)
+    widgetUpdater.requestUpdate()
   }
 
   suspend fun recordPostCheckIn(
@@ -316,6 +330,7 @@ class ActivationRepository(
     scheduledActivityDao.markCompleted(activityId, completedAtMs = nowMs)
     alarmScheduler.cancelAlarmsForActivity(activityId)
     notificationHelper.cancelNotificationsForActivity(activityId)
+    widgetUpdater.requestUpdate()
   }
 
   suspend fun updateReflectionNote(activityId: Long, reflectionNote: String?) {
@@ -327,6 +342,7 @@ class ActivationRepository(
     alarmScheduler.cancelAlarmsForActivity(activityId)
     notificationHelper.cancelNotificationsForActivity(activityId)
     scheduledActivityDao.updateStatus(activityId, ActivityStatus.DISCARDED)
+    widgetUpdater.requestUpdate()
   }
 
   suspend fun handleStartAlarmFired(activityId: Long, nowMs: Long = System.currentTimeMillis()) {
@@ -353,6 +369,7 @@ class ActivationRepository(
     calendarSyncEngine.syncFromDedicatedCalendar(nowMs)
     transitionExpiredToUncompleted(nowMs)
     rescheduleAllAlarms(nowMs)
+    widgetUpdater.requestUpdate()
   }
 
   suspend fun rescheduleAllAlarms(nowMs: Long = System.currentTimeMillis()) {

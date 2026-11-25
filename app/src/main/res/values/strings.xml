@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">ActShift</string>
+    <string name="widget_name">ActShift Next Activation</string>
+    <string name="widget_description">See your next scheduled activation and jump into a quick check-in.</string>
 </resources>
